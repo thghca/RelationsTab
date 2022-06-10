@@ -12,7 +12,7 @@ namespace Fluffy_Relations {
 
         public LabelPars(float width, string message, GameFont font) {
             this.width = width;
-            this.message = message;
+            this.message = message ?? "";
             this.font = font;
         }
 
