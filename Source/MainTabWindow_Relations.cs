@@ -28,6 +28,12 @@ namespace Fluffy_Relations {
         NonAllHostle
     }
 
+    public enum FactionEdgesMode
+    {
+        All,
+        NoNeutral
+    }
+
     public class MainTabWindow_Relations: MainTabWindow {
         #region Constructors
 
@@ -43,6 +49,7 @@ namespace Fluffy_Relations {
         private static Page _currentPage = Page.Colonists;
         private static GraphMode _mode = GraphMode.ForceDirected;
         private static FactionMode _fmode = FactionMode.All;
+        private static FactionEdgesMode _femode = FactionEdgesMode.NoNeutral;
         private static Faction _selectedFaction;
         private static Pawn _selectedPawn;
         private static List<Pawn> pawns;
@@ -96,8 +103,10 @@ namespace Fluffy_Relations {
                 } else
                   // if nothing selected, build full list of connections
                   {
-                    foreach (Node node in graph.nodes) {
-                        foreach (Node other in graph.nodes) {
+                    foreach (FactionNode node in graph.nodes) {
+                        foreach (FactionNode other in graph.nodes) {
+                            if (_femode == FactionEdgesMode.NoNeutral && node.faction.RelationKindWith(other.faction) == FactionRelationKind.Neutral) 
+                                continue;
                             graph.AddEdge<FactionEdge>(node, other);
                         }
                     }
@@ -689,6 +698,18 @@ namespace Fluffy_Relations {
                 if (Widgets.ButtonImage(modeIconRect, Resources.DotsDynamic))
                 {
                     _fmode = (FactionMode)(((int)_fmode + 1) % 2);
+                    CurrentPage = CurrentPage; // restarts graph
+                }
+            }
+
+            if (_currentPage == Page.Factions)
+            {
+                Rect modeIconRect = GetIconRect(canvas, iconIndex++);
+                TooltipHandler.TipRegion(modeIconRect, _femode.ToString().Translate());
+
+                if (Widgets.ButtonImage(modeIconRect, Resources.DotsDynamic))
+                {
+                    _femode = (FactionEdgesMode)(((int)_femode + 1) % 2);
                     CurrentPage = CurrentPage; // restarts graph
                 }
             }
