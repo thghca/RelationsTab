@@ -1,3 +1,4 @@
+using RimWorld;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -89,6 +90,18 @@ namespace Fluffy_Relations {
 
         public static Rect TakeRow(this ref Rect rect, float margin = Constants.Margin) {
             return rect.TakeTopPartPixels(Constants.RowHeight, margin);
+        }
+
+        public static bool HostleToAll(this Faction faction, IEnumerable<Faction> others)
+        {
+            foreach (var f in others)
+            {
+                if (f == faction)
+                    continue;
+                if (!faction.HostileTo(f))
+                    return false;
+            }
+            return true;
         }
     }
 }

@@ -22,6 +22,12 @@ namespace Fluffy_Relations {
         Factions
     }
 
+    public enum FactionMode
+    {
+        All,
+        NonAllHostle
+    }
+
     public class MainTabWindow_Relations: MainTabWindow {
         #region Constructors
 
@@ -36,6 +42,7 @@ namespace Fluffy_Relations {
         public Graph graph;
         private static Page _currentPage = Page.Colonists;
         private static GraphMode _mode = GraphMode.ForceDirected;
+        private static FactionMode _fmode = FactionMode.All;
         private static Faction _selectedFaction;
         private static Pawn _selectedPawn;
         private static List<Pawn> pawns;
@@ -212,11 +219,21 @@ namespace Fluffy_Relations {
                     SelectedPawn = null;
                 }
             } else {
-                graph.nodes = Find.FactionManager
-                    .AllFactionsInViewOrder
-                    .Select(f => new FactionNode(f, networkRect.RandomPoint(), graph) as Node)
-                    .Where(n => n.pawn != null)
-                    .ToList();
+
+                var allfactons = Find.FactionManager.AllFactionsInViewOrder;
+                var factions = allfactons
+                    .Where(f => f.Leader() != null)
+                    .Where(f => !f.temporary);
+
+                var displayOnGraph = factions;
+
+                if (_fmode == FactionMode.NonAllHostle)
+                {
+                    var hostleToAll = factions.Where(f => f.HostleToAll(factions));
+                    displayOnGraph = factions.Except(hostleToAll);
+                }
+
+                graph.nodes = displayOnGraph.Select(f => new FactionNode(f, networkRect.RandomPoint(), graph) as Node).ToList();
 
                 foreach (Node node in graph.nodes) {
                     // attach event handlers to node
@@ -248,7 +265,9 @@ namespace Fluffy_Relations {
                     if (ideologyInstalledAndActive) {
                         node.PostDrawExtras += delegate {
                             Rect ideologyIconRect = new(node.slot.xMin, node.slot.yMin + 20f, 16f, 16f);
-                            PawnSlotDrawer.DrawTextureColoured(ideologyIconRect, fnode.faction.ideos.PrimaryIdeo.Icon, fnode.faction.ideos.PrimaryIdeo.Color);
+                            var primaryIdeo = fnode.faction.ideos?.PrimaryIdeo;
+                            if (primaryIdeo == null) return;
+                            PawnSlotDrawer.DrawTextureColoured(ideologyIconRect, primaryIdeo?.Icon, primaryIdeo.Color);
                             TooltipHandler.TipRegion(ideologyIconRect, fnode.faction.NameColored + " mainly believes in " + fnode.faction.ideos.PrimaryIdeo.name.Colorize(fnode.faction.ideos.PrimaryIdeo.Color) + ".");
                         };
                     }
@@ -263,36 +282,48 @@ namespace Fluffy_Relations {
         }
 
         public override void DoWindowContents(Rect canvas) {
-            // update the graph
-            graph.Update();
+            try
+            {
+                // update the graph
+                graph.Update();
 
-            // set size and draw background
-            //base.DoWindowContents( canvas );
+                // set size and draw background
+                //base.DoWindowContents( canvas );
 
-            // source selection button
-            DrawSourceButton();
+                // source selection button
+                DrawSourceButton();
 
-            // graph reset and mode selection icons
-            DrawGraphOptions(canvas);
+                // graph reset and mode selection icons
+                DrawGraphOptions(canvas);
 
-            // draw relevant page
-            if (CurrentPage == Page.Colonists) {
-                DrawPawnRelations();
-            }
-
-            if (CurrentPage == Page.Factions) {
-                DrawFactionRelations();
-            }
-
-            // see if we can catch clicks in the main rect to reset selections
-            if (Widgets.ButtonInvisible(networkRect)) {
-                if (CurrentPage == Page.Colonists) {
-                    SelectedPawn = null;
+                // draw relevant page
+                if (CurrentPage == Page.Colonists)
+                {
+                    DrawPawnRelations();
                 }
 
-                if (CurrentPage == Page.Factions) {
-                    SelectedFaction = null;
+                if (CurrentPage == Page.Factions)
+                {
+                    DrawFactionRelations();
                 }
+
+                // see if we can catch clicks in the main rect to reset selections
+                if (Widgets.ButtonInvisible(networkRect))
+                {
+                    if (CurrentPage == Page.Colonists)
+                    {
+                        SelectedPawn = null;
+                    }
+
+                    if (CurrentPage == Page.Factions)
+                    {
+                        SelectedFaction = null;
+                    }
+                }
+            }
+            catch(Exception e)
+            {
+                Log.Error(e.ToString());
             }
         }
 
@@ -648,6 +679,18 @@ namespace Fluffy_Relations {
 
                 // because Widgets.BI() doesn't reset it...
                 GUI.color = Color.white;
+            }
+
+            if (_currentPage == Page.Factions)
+            {
+                Rect modeIconRect = GetIconRect(canvas, iconIndex++);
+                TooltipHandler.TipRegion(modeIconRect, _fmode.ToString().Translate());
+
+                if (Widgets.ButtonImage(modeIconRect, Resources.DotsDynamic))
+                {
+                    _fmode = (FactionMode)(((int)_fmode + 1) % 2);
+                    CurrentPage = CurrentPage; // restarts graph
+                }
             }
         }
 
