@@ -105,6 +105,8 @@ namespace Fluffy_Relations {
                   {
                     foreach (FactionNode node in graph.nodes) {
                         foreach (FactionNode other in graph.nodes) {
+                            if (node == other)
+                                continue;
                             if (_femode == FactionEdgesMode.NoNeutral && node.faction.RelationKindWith(other.faction) == FactionRelationKind.Neutral) 
                                 continue;
                             graph.AddEdge<FactionEdge>(node, other);
